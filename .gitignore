@@ -1,0 +1,5 @@
+tests/out/
+Thumbs.db
+.DS_Store
+# Gamla Excel-fakturor med riktiga kunduppgifter ska inte publiceras
+Resources/

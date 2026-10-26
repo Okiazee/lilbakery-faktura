@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faktura-PDF, förhandsvisning</title>
+<style>
+  :root { --ink: #2f4a4d; --muted: #6d8688; --brand: #3b7a80; --line: #d9e9ea; --mist: #f3f8f8; --pink: #f3a6b4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--mist); display: flex; flex-direction: column; height: 100vh; }
+  header { padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  h1 { font-size: 16px; margin: 0 12px 0 0; }
+  button, a.dl { font: inherit; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 999px; padding: 6px 14px; cursor: pointer; text-decoration: none; }
+  button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+  label { display: flex; gap: 6px; align-items: center; color: var(--muted); }
+  #status { color: var(--muted); margin-left: auto; font-size: 13px; }
+  #status.bad { color: #c4536a; }
+  iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Faktura-PDF</h1>
+  <span id="buttons"></span>
+  <label><input type="checkbox" id="plain"> utan typsnitt och logga</label>
+  <a class="dl" id="dl" hidden>Ladda ner</a>
+  <span id="status">Kör via serve.bat (http://localhost:8792/tests/preview.html) så att typsnitt och logga laddas.</span>
+</header>
+<iframe id="frame" title="Förhandsvisning av fakturan"></iframe>
+<script src="../calc.js"></script>
+<script src="../pdf.js"></script>
+<script src="fixture.js"></script>
+<script>
+  const fx = FakturaFixture();
+  const $ = (id) => document.getElementById(id);
+  const labels = { f107: 'Faktura 107', f108: 'Faktura 108 (lång)', k109: 'Kreditfaktura 109', d1: 'Utkast' };
+  let current = null; let url = null;
+  const jspdfLoaded = () => window.jspdf ? Promise.resolve() : new Promise((resolve, reject) => {
+    const s = document.createElement('script'); s.src = '../vendor/jspdf.umd.min.js'; s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+  });
+
+  async function show(inv) {
+    current = inv;
+    document.querySelectorAll('#buttons button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === inv.id)));
+    $('status').className = ''; $('status').textContent = 'Skapar PDF …';
+    const t0 = performance.now();
+    try {
+      let blob;
+      if ($('plain').checked) {
+        // Reservläget: samma ritfunktion utan typsnitt och logga.
+        await jspdfLoaded();
+        const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p', compress: true });
+        FakturaPdf.draw(doc, inv, fx.settings, { logo: null, fonts: null });
+        blob = doc.output('blob');
+      } else {
+        blob = await FakturaPdf.render(inv, { seller: fx.settings, base: '../' });
+      }
+      if (url) URL.revokeObjectURL(url);
+      url = URL.createObjectURL(blob);
+      $('frame').src = url;
+      const assets = await FakturaPdf.loadAssets('../');
+      const dl = $('dl'); dl.href = url; dl.download = FakturaPdf.filename(inv); dl.hidden = false;
+      $('status').textContent = `${FakturaCalc.title(inv)} · ${Math.round(blob.size / 1024)} kB · ${Math.round(performance.now() - t0)} ms` +
+        (assets.fonts ? '' : ' · typsnitten kunde inte laddas (Helvetica används)') + (assets.logo ? '' : ' · loggan kunde inte laddas');
+    } catch (e) {
+      $('status').className = 'bad'; $('status').textContent = 'Fel: ' + (e && e.message || e);
+      console.error(e);
+    }
+  }
+
+  fx.invoices.forEach((inv) => {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.id = inv.id;
+    b.textContent = labels[inv.id] || FakturaCalc.title(inv); b.onclick = () => show(inv);
+    $('buttons').append(b, ' ');
+  });
+  $('plain').onchange = () => current && show(current);
+  show(fx.invoices[0]);
+</script>
+</body>
+</html>
