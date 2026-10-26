@@ -100,7 +100,12 @@ Ta därför kopior:
      Ctrl+S.
   5. Klicka *Distribuera → Hantera distributioner*, pennan, välj
      *Version: Ny version* och klicka *Distribuera*. Adressen är densamma.
-  6. Tryck *Testa anslutningen* i fakturaappen.
+  6. Godkänn behörigheterna en gång. Google frågar inte av sig självt när
+     skriptet får nya funktioner, som att skicka e-post. Välj funktionen
+     **hamtaMapp** i listan bredvid *Kör* överst i skripteditorn och klicka
+     *Kör*. Välj ditt konto, *Avancerat*, *Fortsätt till projektet (osäkert)*
+     och *Tillåt*.
+  7. Tryck *Testa anslutningen* i fakturaappen.
 
   Tills skriptet är uppdaterat skickar fakturaappen ingenting till Drive, för
   att inte skriva över kassans kopia. Har du inte kopplat kassan till Drive än:
