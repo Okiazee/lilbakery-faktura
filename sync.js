@@ -142,6 +142,7 @@ function svar(obj) { return ContentService.createTextOutput(JSON.stringify(obj))
   // Skriptets korta felkoder och Googles egna fel blir svenska förklaringar.
   function scriptError(msg) {
     const m = String(msg || '');
+    if (/^Google har inte godkänt/.test(m)) return m;   // redan översatt, annars visas texten två gånger
     if (m === 'Fel nyckel') return KEY_MSG;
     if (m === 'Ingen kopia finns') return 'Det finns ingen kopia på Google Drive ännu.';
     if (m === 'Kopian saknas') return 'Kopian kom inte fram till skriptet. Försök igen.';

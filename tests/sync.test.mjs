@@ -431,3 +431,11 @@ test('sendMail: skickar via action mail, kräver mejlstöd och giltig adress', a
   mockFetch((u, body) => (body ? { ok: false, error: 'Exception: Service invoked too many times for one day: email.' } : { ok: true, mail: true, version: 3, faktura: true }));
   await assert.rejects(Sync.sendMail(SETTINGS, { to: 'eva@example.se' }), /gräns/);
 });
+
+test('friendlyError: behörighetsfel översätts bara en gång', () => {
+  const raw = 'Exception: Du har inte behörighet att ringa MailApp.sendEmail. Behörigheter som krävs: https://www.googleapis.com/auth/script.send_mail';
+  const once = Sync.friendlyError(new Error(raw));
+  assert.match(once, /^Google har inte godkänt/);
+  assert.equal(Sync.friendlyError(new Error(once)), once);
+  assert.equal(once.split('Google har inte godkänt').length, 2);
+});
