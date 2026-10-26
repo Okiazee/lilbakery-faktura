@@ -1,6 +1,6 @@
 /* Service worker för lil'bakery Faktura: appen fungerar offline när den väl laddats en gång.
    Ändra VERSION när filerna ändras, så hämtar installerade appar den nya versionen. */
-const VERSION = '2026-10-26.2';
+const VERSION = '2026-10-26.3';
 const SHELL = 'faktura-shell-' + VERSION;
 const FONTS = 'faktura-fonts';
 const ASSETS = [

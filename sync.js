@@ -147,7 +147,7 @@ function svar(obj) { return ContentService.createTextOutput(JSON.stringify(obj))
     if (m === 'Kopian saknas') return 'Kopian kom inte fram till skriptet. Försök igen.';
     if (m === 'Ogiltig e-postadress') return 'E-postadressen är ogiltig. Kontrollera adressen och försök igen.';
     if (/too many times|Service invoked|quota|kvot/i.test(m)) return 'Google har stoppat fler mejl från skriptet i dag (det finns en gräns per dag). Försök igen i morgon eller använd Öppna i Mail.';
-    if (/permission|behörighet|not authori[sz]ed|Authorization is required/i.test(m)) return 'Google har inte godkänt att skriptet skickar e-post eller sparar på Drive. Öppna skriptet på script.google.com, välj funktionen hamtaMapp i listan bredvid Kör, klicka Kör och godkänn: välj ditt konto, Avancerat, Fortsätt till projektet (osäkert) och Tillåt. Försök sedan igen.';
+    if (/permission|behörighet|not authori[sz]ed|Authorization is required/i.test(m)) return 'Google har inte godkänt att skriptet skickar e-post eller sparar på Drive. Öppna skriptet på script.google.com, välj funktionen hamtaMapp i listan bredvid Kör, klicka Kör och godkänn: välj ditt konto, Avancerat, Fortsätt till projektet (osäkert) och Tillåt. Försök sedan igen. Googles svar: ' + m;
     return m || 'Skriptet svarade med fel';
   }
   function friendlyError(err) {
