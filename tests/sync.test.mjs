@@ -218,11 +218,11 @@ function appsScript(key) {
   };
 }
 
-test('scriptText: version 3, nyckeln ifylld och rensad', () => {
+test('scriptText: version 4, nyckeln ifylld och rensad', () => {
   const s = Sync.scriptText('abc-123_X');
-  assert.match(s, /version 3/);
+  assert.match(s, /version 4/);
   assert.match(s, /const NYCKEL = 'abc-123_X';/);
-  assert.match(s, /version: 3, faktura: true/);
+  assert.match(s, /version: 4, faktura: true, kalender: true/);
   assert.match(Sync.scriptText("x';alert(1)//"), /const NYCKEL = 'xalert1';/);
   assert.match(Sync.scriptText(), /const NYCKEL = '';/);
   assert.equal(Sync.SCRIPT_VERSION, 3);
@@ -230,7 +230,7 @@ test('scriptText: version 3, nyckeln ifylld och rensad', () => {
 
 test('scriptText: ping, fel nyckel och kassans backup som förut', () => {
   const g = appsScript('nyckel1');
-  assert.deepEqual(g.get({ key: 'nyckel1', action: 'ping' }), { ok: true, mail: true, version: 3, faktura: true });
+  assert.deepEqual(g.get({ key: 'nyckel1', action: 'ping' }), { ok: true, mail: true, version: 4, faktura: true, kalender: true });
   assert.equal(g.get({ key: 'fel', action: 'ping' }).error, 'Fel nyckel');
   assert.equal(g.post({ key: 'fel', backup: {} }).error, 'Fel nyckel');
   assert.equal(g.get({ key: 'nyckel1' }).error, 'Ingen kopia finns');

@@ -75,17 +75,20 @@
   // Samma skript som kassan visar. Ändras det här måste kassans driveScriptText() ändras likadant (testet jämför dem).
   function scriptText(key) {
     const k = String(key || '').replace(/[^\w-]/g, '');
-    return `// lil'bakery Kassa och Faktura, version 3: sparar säkerhetskopior på Google Drive och mejlar kvitton och fakturor.
+    return `// lil'bakery Kassa och Faktura, version 4: sparar säkerhetskopior på Google Drive, mejlar kvitton och fakturor och lägger beställningar i Google Kalender.
 const NYCKEL = '${k}';   // samma nyckel i kassans och fakturaappens inställningar
 const MAPP = "lil'bakery Kassa";        // mappen skapas i Min enhet på Google Drive
 const FAKTURAMAPP = 'Fakturor';         // undermapp i MAPP för fakturaappens kopior och PDF:er
+const KALENDER = "lil'bakery beställningar";   // kassans kalender, skapas om den saknas
 
 // Kassan skickar utan app, fakturaappen med app: 'faktura'. Båda mejlar med action: 'mail'.
+// Kassan lägger beställningar i kalendern med action: 'kalender'.
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     if (data.key !== NYCKEL) return svar({ ok: false, error: 'Fel nyckel' });
     if (data.action === 'mail') return skickaMejl(data);
+    if (data.action === 'kalender') return synkaKalender(data);
     if (data.app === 'faktura') return sparaFaktura(data);
     if (!data.backup || typeof data.backup !== 'object') return svar({ ok: false, error: 'Kopian saknas' });
     const mapp = hamtaMapp();
@@ -99,7 +102,7 @@ function doPost(e) {
 }
 function doGet(e) {
   if (!e.parameter || e.parameter.key !== NYCKEL) return svar({ ok: false, error: 'Fel nyckel' });
-  if (e.parameter.action === 'ping') return svar({ ok: true, mail: true, version: 3, faktura: true });
+  if (e.parameter.action === 'ping') return svar({ ok: true, mail: true, version: 4, faktura: true, kalender: true });
   const faktura = e.parameter.app === 'faktura';
   const mapp = faktura ? hamtaFakturamapp() : hamtaMapp();
   const filer = mapp.getFilesByName(faktura ? 'faktura-backup-senaste.json' : 'kassa-backup-senaste.json');
@@ -133,6 +136,53 @@ function skickaMejl(data) {
   MailApp.sendEmail({ to: data.to, subject: data.subject || 'Kvitto', body: data.text || '', htmlBody: data.html || undefined, name: data.from || "lil'bakery", attachments: bilagor });
   return svar({ ok: true, sent: new Date().toISOString() });
 }
+// Kassans beställningar blir händelser i en egen kalender. Kopplingen beställning → händelse sparas
+// i skriptets egenskaper, så att samma händelse flyttas eller tas bort när beställningen ändras.
+function synkaKalender(data) {
+  const kal = hamtaKalender(data.kalender);
+  const props = PropertiesService.getScriptProperties();
+  const tz = data.tz || kal.getTimeZone() || Session.getScriptTimeZone();
+  const nyckel = function (id) { return 'kal_' + kal.getId() + '|' + id; };
+  const hitta = function (id) { const evId = props.getProperty(nyckel(id)); try { return evId ? kal.getEventById(evId) : null; } catch (err) { return null; } };
+  const klara = []; const fel = [];
+  (data.bort || []).forEach(function (id) {
+    try {
+      const ev = hitta(id);
+      if (ev) ev.deleteEvent();
+      props.deleteProperty(nyckel(id));
+      klara.push(id);
+    } catch (err) { fel.push({ id: id, error: String(err) }); }
+  });
+  (data.handelser || []).forEach(function (h) {
+    try {
+      // Heldag räknas från klockan tolv, så att dagen blir rätt i alla tidszoner.
+      const start = Utilities.parseDate(h.datum + ' ' + (h.tid || '12:00'), tz, 'yyyy-MM-dd HH:mm');
+      const slut = new Date(start.getTime() + (Number(h.minuter) || 30) * 60000);
+      const opt = { description: h.beskrivning || '', location: h.plats || '' };
+      let ev = hitta(h.id);
+      if (ev) {
+        try {
+          if (ev.isAllDayEvent() === Boolean(h.tid)) { ev.deleteEvent(); ev = null; }   // heldag blev tid eller tvärtom
+          else {
+            ev.setTitle(h.titel); ev.setDescription(opt.description); ev.setLocation(opt.location);
+            if (h.tid) ev.setTime(start, slut); else ev.setAllDayDate(start);
+          }
+        } catch (err) { ev = null; }   // händelsen har tagits bort i kalendern, skapa en ny
+      }
+      if (!ev) ev = h.tid ? kal.createEvent(h.titel, start, slut, opt) : kal.createAllDayEvent(h.titel, start, opt);
+      props.setProperty(nyckel(h.id), ev.getId());
+      klara.push(h.id);
+    } catch (err) { fel.push({ id: h.id, error: String(err) }); }
+  });
+  return svar({ ok: true, klara: klara, fel: fel, kalender: kal.getName() });
+}
+function hamtaKalender(namn) {
+  const n = String(namn || '').trim() || KALENDER;
+  const finns = CalendarApp.getCalendarsByName(n);
+  return finns.length ? finns[0] : CalendarApp.createCalendar(n);
+}
+// Kör godkann en gång i redigeraren efter en uppdatering, så frågar Google om lov för Drive, e-post och kalender.
+function godkann() { hamtaMapp(); MailApp.getRemainingDailyQuota(); hamtaKalender(); }
 function hamtaMapp() { const it = DriveApp.getFoldersByName(MAPP); return it.hasNext() ? it.next() : DriveApp.createFolder(MAPP); }
 function hamtaFakturamapp() { const mapp = hamtaMapp(); const it = mapp.getFoldersByName(FAKTURAMAPP); return it.hasNext() ? it.next() : mapp.createFolder(FAKTURAMAPP); }
 function skriv(mapp, namn, innehall) { const it = mapp.getFilesByName(namn); if (it.hasNext()) it.next().setContent(innehall); else mapp.createFile(namn, innehall, MimeType.PLAIN_TEXT); }

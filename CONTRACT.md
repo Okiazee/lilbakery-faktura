@@ -216,6 +216,14 @@ Samma webbapp och nyckel som kassan. Version 3 är bakåtkompatibel med kassans 
 Fakturaappen skickar aldrig en backup till ett skript som svarar version < 3 (då skulle kassans backup
 skrivas över). Inställningarna visar tydligt när skriptet behöver uppdateras, med samma steg som kassan.
 
+Version 4 (2026-11-01, kassa 1.9.0) lägger till kassans kalendersynk och ändrar inget annat:
+- `POST { action: 'kalender', kalender, tz, handelser: [{ id, titel, datum, tid, minuter, beskrivning, plats }], bort: [id] }`
+  → händelser i en egen kalender (standard `lil'bakery beställningar`), `{ ok, klara, fel, kalender }`.
+- `GET ?action=ping` → `{ ok: true, mail: true, version: 4, faktura: true, kalender: true }`.
+- Funktionen `godkann()` körs en gång i redigeraren för att godkänna Drive, e-post och kalender.
+
+Fakturaappen kräver fortfarande minst version 3 (`SCRIPT_VERSION = 3`) och visar version 4 som skriptet att klistra in.
+
 ## Fakturans innehåll (PDF, A4)
 
 Lagkrav enligt mervärdesskattelagen som alltid ska finnas: fakturadatum, löpnummer, säljarens
