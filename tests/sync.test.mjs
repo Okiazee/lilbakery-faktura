@@ -305,7 +305,10 @@ test('kassan visar exakt samma skript (bara nyckeln skiljer)', { skip: !existsSy
   assert.equal(kassaText, Sync.scriptText(key));
   assert.equal(new Function('state', 'return `' + m[1] + '`;')({ settings: {} }), Sync.scriptText(''));
   assert.match(html, /json\.mail === true/);   // kassans mejlkontroll fungerar med version 3
-  assert.match(html, /const APP_VERSION = '1\.7\.2';/);
+  // Kassan har minst version 1.7.2, den första med skriptversion 3.
+  const v = /const APP_VERSION = '(\d+)\.(\d+)\.(\d+)';/.exec(html);
+  assert.ok(v, 'APP_VERSION hittades inte i kassan');
+  assert.ok(Number(v[1]) * 1e6 + Number(v[2]) * 1e3 + Number(v[3]) >= 1007002, `kassan har version ${v[1]}.${v[2]}.${v[3]}`);
 });
 
 // ---------- Anrop till Google (fetch byts ut) ----------
