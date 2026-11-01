@@ -75,7 +75,7 @@
   // Samma skript som kassan visar. Ändras det här måste kassans driveScriptText() ändras likadant (testet jämför dem).
   function scriptText(key) {
     const k = String(key || '').replace(/[^\w-]/g, '');
-    return `// lil'bakery Kassa och Faktura, version 4: sparar säkerhetskopior på Google Drive, mejlar kvitton och fakturor och lägger beställningar i Google Kalender.
+    return `// lil'bakery Kassa och Faktura, version 5: sparar säkerhetskopior på Google Drive, mejlar kvitton och fakturor och lägger beställningar i Google Kalender med påminnelse.
 const NYCKEL = '${k}';   // samma nyckel i kassans och fakturaappens inställningar
 const MAPP = "lil'bakery Kassa";        // mappen skapas i Min enhet på Google Drive
 const FAKTURAMAPP = 'Fakturor';         // undermapp i MAPP för fakturaappens kopior och PDF:er
@@ -102,7 +102,7 @@ function doPost(e) {
 }
 function doGet(e) {
   if (!e.parameter || e.parameter.key !== NYCKEL) return svar({ ok: false, error: 'Fel nyckel' });
-  if (e.parameter.action === 'ping') return svar({ ok: true, mail: true, version: 4, faktura: true, kalender: true });
+  if (e.parameter.action === 'ping') return svar({ ok: true, mail: true, version: 5, faktura: true, kalender: true, paminnelse: true });
   const faktura = e.parameter.app === 'faktura';
   const mapp = faktura ? hamtaFakturamapp() : hamtaMapp();
   const filer = mapp.getFilesByName(faktura ? 'faktura-backup-senaste.json' : 'kassa-backup-senaste.json');
@@ -170,11 +170,21 @@ function synkaKalender(data) {
         } catch (err) { ev = null; }   // händelsen har tagits bort i kalendern, skapa en ny
       }
       if (!ev) ev = h.tid ? kal.createEvent(h.titel, start, slut, opt) : kal.createAllDayEvent(h.titel, start, opt);
+      if (h.paminnelse !== undefined) paminn(ev, h, start, tz);   // utan fältet rörs påminnelserna inte
       props.setProperty(nyckel(h.id), ev.getId());
       klara.push(h.id);
     } catch (err) { fel.push({ id: h.id, error: String(err) }); }
   });
   return svar({ ok: true, klara: klara, fel: fel, kalender: kal.getName() });
+}
+// En påminnelse vid h.paminnelse ('yyyy-MM-dd HH:mm'), t.ex. kl. 14 tre dagar före. null tar bort påminnelserna.
+function paminn(ev, h, start, tz) {
+  ev.removeAllReminders();
+  if (!h.paminnelse) return;
+  const nar = Utilities.parseDate(h.paminnelse, tz, 'yyyy-MM-dd HH:mm');
+  const fran = h.tid ? start : Utilities.parseDate(h.datum + ' 00:00', tz, 'yyyy-MM-dd HH:mm');   // heldag räknas från midnatt
+  const minuter = Math.round((fran.getTime() - nar.getTime()) / 60000);
+  if (minuter >= 0 && minuter <= 40320) ev.addPopupReminder(minuter);   // Google tillåter högst fyra veckor
 }
 function hamtaKalender(namn) {
   const n = String(namn || '').trim() || KALENDER;
